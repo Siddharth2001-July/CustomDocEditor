@@ -75,6 +75,9 @@ const docEditFootItems = [
         if(viewState.get("interactionMode") === PSPDFKit.InteractionMode.DOCUMENT_EDITOR) {
           applyStoredClassifications();
         }
+        else {
+          // instance.setViewState("interactionMode", PSPDFKit.InteractionMode.DOCUMENT_EDITOR);
+        }
       });
       // console.log(PSPDFKit.defaultDocumentEditorFooterItems);
     })

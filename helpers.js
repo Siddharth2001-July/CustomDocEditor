@@ -41,6 +41,34 @@ export const classes = [
   },
 ];
 
+export function enableDownIfClassified() {
+  // Get the total number of pages in the PDF
+  const totalPages = window.instance.totalPageCount;
+  // Get all classified pages from localStorage
+  const classData = JSON.parse(localStorage.getItem("classData") || "{}");
+
+  // Create a Set to store unique classified page indexes
+  const classifiedPages = new Set();
+
+  // Populate the Set with all classified page indexes
+  Object.values(classData).forEach((pageIndexes) => {
+    pageIndexes.forEach((pageIndex) => classifiedPages.add(pageIndex));
+  });
+
+  // Check if the number of unique classified pages equals the total number of pages
+  const isEveryPageClassified = classifiedPages.size === totalPages;
+
+  window.instance.setDocumentEditorToolbarItems((items) => {
+    items.map((item) => {
+      if (item.id === "DownClasses") {
+        item.disabled = !isEveryPageClassified;
+      }
+      return item;
+    });
+    return items;
+  });
+}
+
 export function downloadFile(buffer, filename) {
   const blob = new Blob([buffer], {
     type: "application/pdf",
@@ -73,6 +101,7 @@ export function applyStoredClassifications() {
         transformThumbnailUI(pageIndex, classItem.color);
       });
     });
+    enableDownIfClassified();
   }, 100);
 }
 
@@ -113,7 +142,8 @@ function transformThumbnailUI(pageIndex, color) {
     circleContainer.style.justifyContent = "center";
     circleContainer.style.alignItems = "center";
     circleContainer.style.height = "28px"; // Increased height to accommodate larger circles
-    circleContainer.style.marginTop = "5px";
+    circleContainer.style.marginTop = "-2px";
+    circleContainer.style.marginBottom = "2px";
     circleContainer.style.overflowX = "auto";
     circleContainer.style.overflowY = "hidden";
     circleContainer.style.whiteSpace = "nowrap";
@@ -194,6 +224,7 @@ export function generateAddToClasses(classes) {
             selectedPages
           );
           localStorage.setItem("classData", JSON.stringify(classData));
+          enableDownIfClassified();
         }
       },
     };
@@ -258,8 +289,8 @@ export const downloadAllClass = {
   id: "DownClasses",
   className: "class",
   title: "Download Zip",
-  icon: SaveSvg.toString(),
-  disabled: false,
+  //   icon: SaveSvg.toString(),
+  disabled: true,
   onPress: async (event) => {
     const classData = JSON.parse(localStorage.getItem("classData") || "{}");
     const pdfBuffers = await Promise.all(
@@ -285,13 +316,14 @@ export const downloadAllClass = {
 };
 
 export const Clear = {
-    type: "custom",
-    id: "Clear",
-    className: "class",
-    title: "Reset",
-    disabled: false,
-    onPress: async (event) => {
-        localStorage.clear();
-        window.location.reload();
-    },
-  };
+  type: "custom",
+  id: "Clear",
+  className: "class",
+  title: "Reset",
+  disabled: false,
+  onPress: async (event) => {
+    localStorage.clear();
+    window.location.reload();
+    enableDownIfClassified();
+  },
+};
