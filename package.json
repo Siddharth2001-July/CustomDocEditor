@@ -1,6 +1,6 @@
 {
   "dependencies": {
-    "pspdfkit": "^2024.5.2"
+    "pspdfkit": "https://my.pspdfkit.com/download/pspdfkit-web/nightly.tar.gz?cachebust=todaysdate"
   },
   "scripts": {
     "copyAssets": "cp -R ./node_modules/pspdfkit/dist/ ./assets/",

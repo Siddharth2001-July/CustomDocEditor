@@ -11,20 +11,13 @@ import {
 // const baseUrl = "https://cdn.cloud.pspdfkit.com/pspdfkit-web@2024.5.2/";
 const baseUrl = `${window.location.protocol}//${window.location.host}/assets/`;
 
-
-
+// Generate the class buttons like labReport, etc.
 const classButtons = generateAddToClasses(classes);
 
-// Calculate the middle index to split the array
-const middleIndex = Math.ceil(classButtons.length / 2);
-
-// Split the classButtons array
-const firstHalfClassButtons = classButtons.slice(0, middleIndex);
-const secondHalfClassButtons = classButtons.slice(middleIndex);
-
+classButtons.push(downloadAllClass,Clear);
 
 // Add the node property to secondHalfClassButtons
-const modifiedSecondHalfClassButtons = classButtons.map(button => {
+const modifiedClassButtons = classButtons.map(button => {
   const node = document.createElement("button");
   node.className = `PSPDFKit-8ehcbhz241z1tfyhjztbe12ube PSPDFKit-5hqvpgcgpf1769cn35dvtg4ktz ${button.className} PSPDFKit-Toolbar-Button PSPDFKit-Tool-Button`;
   node.title = button.title;
@@ -51,10 +44,13 @@ const docEditToolItems = [
 ];
 
 const docEditFootItems = [
-  // downloadAllClass,
-  ...modifiedSecondHalfClassButtons,
+  ...modifiedClassButtons,
   // ...PSPDFKit.defaultDocumentEditorFooterItems,
 ];
+
+const {
+  UI: { createBlock, Recipes, Interfaces, Core },
+} = PSPDFKit;
 
 (async () => {
   PSPDFKit.load({
@@ -66,6 +62,14 @@ const docEditFootItems = [
     documentEditorFooterItems: [...docEditFootItems],
     initialViewState: new PSPDFKit.ViewState().set("interactionMode", PSPDFKit.InteractionMode.DOCUMENT_EDITOR),
     styleSheets: [`/style.css`],  
+    ui: {
+      [Interfaces.DocumentEditor]: ({ props: props }) => {
+        return createBlock(Recipes.DocumentEditor, props, ({ ui }) => {
+          console.log("Document Editor UI is ready");
+          return ui.createComponent();
+        }).createComponent();
+      },
+    },
   })
     .then(async (instance) => {
       // localStorage.clear();

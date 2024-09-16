@@ -256,9 +256,7 @@ const SaveSvg = `
 export const downloadAllClass = {
   type: "custom",
   id: "DownClasses",
-  className: "class",
   title: "Download Zip",
-  icon: SaveSvg.toString(),
   disabled: false,
   onPress: async (event) => {
     const classData = JSON.parse(localStorage.getItem("classData") || "{}");
@@ -285,13 +283,12 @@ export const downloadAllClass = {
 };
 
 export const Clear = {
-    type: "custom",
-    id: "Clear",
-    className: "class",
-    title: "Reset",
-    disabled: false,
-    onPress: async (event) => {
-        localStorage.clear();
-        window.location.reload();
-    },
-  };
+  type: "custom",
+  id: "Clear",
+  title: "Reset",
+  disabled: false,
+  onPress: async (event) => {
+    localStorage.clear();
+    window.location.reload();
+  },
+};
