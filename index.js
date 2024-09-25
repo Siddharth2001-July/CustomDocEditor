@@ -1,10 +1,11 @@
 const PSPDFKit = window.PSPDFKit;
 import {
   classes,
-  applyStoredClassifications,
+  applyStoredFinalisations,
   downloadAllClass,
   generateAddToClasses,
   Clear,
+  finalise,
 } from "./helpers.js";
 
 // We need to inform PSPDFKit where to look for its library assets, i.e. the location of the `pspdfkit-lib` directory.
@@ -47,7 +48,8 @@ const docEditToolItems = [
   { type: "zoom-out" , dropdownGroup: "x"},
   { type: "select-none" , dropdownGroup: "x"},
   downloadAllClass,
-  Clear
+  Clear,
+  finalise
 ];
 
 const docEditFootItems = [
@@ -70,16 +72,15 @@ const docEditFootItems = [
     .then(async (instance) => {
       // localStorage.clear();
       window.instance = instance;
-      applyStoredClassifications();
+      applyStoredFinalisations();
       instance.addEventListener("viewState.change", (viewState, previousViewState) => {
         if(viewState.get("interactionMode") === PSPDFKit.InteractionMode.DOCUMENT_EDITOR) {
-          applyStoredClassifications();
+          applyStoredFinalisations();
         }
         else {
           // instance.setViewState("interactionMode", PSPDFKit.InteractionMode.DOCUMENT_EDITOR);
         }
       });
-      // console.log(PSPDFKit.defaultDocumentEditorFooterItems);
     })
     .catch((error) => {
       console.error(error.message);
