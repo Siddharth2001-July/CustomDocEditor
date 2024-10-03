@@ -61,15 +61,15 @@ const {
     documentEditorToolbarItems: [...docEditToolItems],
     documentEditorFooterItems: [...docEditFootItems],
     initialViewState: new PSPDFKit.ViewState().set("interactionMode", PSPDFKit.InteractionMode.DOCUMENT_EDITOR),
-    styleSheets: [`/style.css`],  
     ui: {
       [Interfaces.DocumentEditor]: ({ props: props }) => {
         return createBlock(Recipes.DocumentEditor, props, ({ ui }) => {
-          console.log("Document Editor UI is ready");
+          const buttonBlock = createBlock()
           return ui.createComponent();
         }).createComponent();
       },
     },
+    styleSheets: [`/style.css`],
   })
     .then(async (instance) => {
       // localStorage.clear();
