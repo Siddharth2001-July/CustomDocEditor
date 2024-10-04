@@ -6,13 +6,13 @@ import {
   generateAddToClasses,
   Clear,
   finalise,
+  updateClassificationButtonStates,
+  handleSearch
 } from "./helpers.js";
 
 // We need to inform PSPDFKit where to look for its library assets, i.e. the location of the `pspdfkit-lib` directory.
 // const baseUrl = "https://cdn.cloud.pspdfkit.com/pspdfkit-web@2024.5.2/";
 const baseUrl = `${window.location.protocol}//${window.location.host}/assets/`;
-
-
 
 const classButtons = generateAddToClasses(classes);
 
@@ -23,14 +23,13 @@ const middleIndex = Math.ceil(classButtons.length / 2);
 const firstHalfClassButtons = classButtons.slice(0, middleIndex);
 const secondHalfClassButtons = classButtons.slice(middleIndex);
 
-
 // Add the node property to secondHalfClassButtons
-const modifiedSecondHalfClassButtons = classButtons.map(button => {
+const modifiedSecondHalfClassButtons = classButtons.map((button) => {
   const node = document.createElement("button");
   node.className = `PSPDFKit-8ehcbhz241z1tfyhjztbe12ube PSPDFKit-5hqvpgcgpf1769cn35dvtg4ktz ${button.className} PSPDFKit-Toolbar-Button PSPDFKit-Tool-Button`;
   node.title = button.title;
-  node.setAttribute('aria-label', button.title);
-  node.type = 'button';
+  node.setAttribute("aria-label", button.title);
+  node.type = "button";
 
   const span = document.createElement("span");
   span.textContent = button.title;
@@ -38,18 +37,18 @@ const modifiedSecondHalfClassButtons = classButtons.map(button => {
 
   return {
     ...button,
-    node
+    node,
   };
 });
 
 const docEditToolItems = [
   // ...firstHalfClassButtons,
-  { type: "zoom-in", dropdownGroup: "x"},
-  { type: "zoom-out" , dropdownGroup: "x"},
-  { type: "select-none" , dropdownGroup: "x"},
+  { type: "zoom-in", dropdownGroup: "x" },
+  { type: "zoom-out", dropdownGroup: "x" },
+  { type: "select-none", dropdownGroup: "x" },
   downloadAllClass,
   Clear,
-  finalise
+  finalise,
 ];
 
 const docEditFootItems = [
@@ -58,31 +57,114 @@ const docEditFootItems = [
   // ...PSPDFKit.defaultDocumentEditorFooterItems,
 ];
 
-(async () => {
+
+function initializePSPDFKit(pdfArrayBuffer) {
+  document.getElementById('drop-area').style.display = 'none';
+  document.getElementById('pspdfkit').style.display = 'block';
+
   PSPDFKit.load({
     baseUrl,
     container: "#pspdfkit",
-    document: "document.pdf",
+    document: pdfArrayBuffer,
     toolbarItems: [...PSPDFKit.defaultToolbarItems],
     documentEditorToolbarItems: [...docEditToolItems],
     documentEditorFooterItems: [...docEditFootItems],
-    initialViewState: new PSPDFKit.ViewState().set("interactionMode", PSPDFKit.InteractionMode.DOCUMENT_EDITOR),
-    styleSheets: [`/style.css`],  
+    initialViewState: new PSPDFKit.ViewState().set(
+      "interactionMode",
+      PSPDFKit.InteractionMode.DOCUMENT_EDITOR
+    ),
+    styleSheets: [`/style.css`],
   })
     .then(async (instance) => {
-      // localStorage.clear();
+      console.clear();
       window.instance = instance;
       applyStoredFinalisations();
-      instance.addEventListener("viewState.change", (viewState, previousViewState) => {
-        if(viewState.get("interactionMode") === PSPDFKit.InteractionMode.DOCUMENT_EDITOR) {
-          applyStoredFinalisations();
+      updateClassificationButtonStates();
+      instance.contentDocument.addEventListener('keydown', handleSearch);
+      instance.addEventListener(
+        "viewState.change",
+        (viewState, previousViewState) => {
+          if (
+            viewState.get("interactionMode") ===
+            PSPDFKit.InteractionMode.DOCUMENT_EDITOR
+          ) {
+            applyStoredFinalisations();
+            updateClassificationButtonStates();
+          }
         }
-        else {
-          // instance.setViewState("interactionMode", PSPDFKit.InteractionMode.DOCUMENT_EDITOR);
-        }
-      });
+      );
     })
     .catch((error) => {
       console.error(error.message);
+      document.getElementById('status').textContent = "Error initializing PDF viewer. Please try again.";
     });
-})();
+}
+
+function uploadDoc() {
+  const dropArea = document.getElementById('drop-area');
+  const fileInput = document.getElementById('file-input');
+  const uploadButton = document.getElementById('upload-button');
+  const status = document.getElementById('status');
+
+  ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+    dropArea.addEventListener(eventName, preventDefaults, false);
+  });
+
+  function preventDefaults(e) {
+    e.preventDefault();
+    e.stopPropagation();
+  }
+
+  ['dragenter', 'dragover'].forEach(eventName => {
+    dropArea.addEventListener(eventName, highlight, false);
+  });
+
+  ['dragleave', 'drop'].forEach(eventName => {
+    dropArea.addEventListener(eventName, unhighlight, false);
+  });
+
+  function highlight() {
+    dropArea.classList.add('highlight');
+  }
+
+  function unhighlight() {
+    dropArea.classList.remove('highlight');
+  }
+
+  dropArea.addEventListener('drop', handleDrop, false);
+  fileInput.addEventListener('change', handleFiles, false);
+  uploadButton.addEventListener('click', () => fileInput.click());
+
+  function handleDrop(e) {
+    const dt = e.dataTransfer;
+    const files = dt.files;
+    handleFiles(files);
+  }
+
+  function handleFiles(files) {
+    if (files instanceof FileList) {
+      ([...files]).forEach(uploadFile);
+    } else if (files.target && files.target.files) {
+      ([...files.target.files]).forEach(uploadFile);
+    }
+  }
+
+  function uploadFile(file) {
+    if (file.type !== "application/pdf") {
+      status.textContent = "Please upload a valid PDF file.";
+      return;
+    }
+
+    status.textContent = "Uploading...";
+    
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      status.textContent = "Upload successful. Initializing PDF viewer...";
+      initializePSPDFKit(e.target.result);
+    };
+    reader.readAsArrayBuffer(file);
+  }
+}
+
+// Call the uploadDoc function when the page loads
+document.addEventListener('DOMContentLoaded', uploadDoc);

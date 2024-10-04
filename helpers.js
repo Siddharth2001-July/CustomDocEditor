@@ -63,7 +63,7 @@ export function enableDownIfAllFinalised() {
   // Create a set of all finalised page indices
   const finalisedPages = new Set(
     finalisedData.flatMap((item) => {
-      if(item.label !== "Temporary") 
+      if (item.label !== "Temporary")
         return item.pages.map((page) => page.pageIndex);
     })
   );
@@ -265,7 +265,32 @@ function createColorCircle(color, hasBorder = false) {
   return svg;
 }
 
-// Generate "Add to Class" buttons for each class
+// Add this new function to check if any temporary classifications exist
+export function hasTemporaryClassifications() {
+  const finalisedData = JSON.parse(
+    localStorage.getItem("finalisedData") || "[]"
+  );
+  const temporaryItem = finalisedData.find(
+    (item) => item.label === "Temporary"
+  );
+  return temporaryItem && temporaryItem.pages.length > 0;
+}
+
+// Add this new function to get the currently active classification
+export function getActiveClassification() {
+  const finalisedData = JSON.parse(
+    localStorage.getItem("finalisedData") || "[]"
+  );
+  const temporaryItem = finalisedData.find(
+    (item) => item.label === "Temporary"
+  );
+  if (temporaryItem && temporaryItem.pages.length > 0) {
+    return temporaryItem.pages[0].classes[0];
+  }
+  return null;
+}
+
+// Generate buttons for adding classifications
 export function generateAddToClasses(classes) {
   return classes.map((classItem) => {
     return {
@@ -279,30 +304,33 @@ export function generateAddToClasses(classes) {
           alert(`Please select some pages to add to ${classItem.title}`);
           return;
         } else {
-          // Filter out already finalised pages
-          const nonFinalisedPages = selectedPages.filter(
-            (pageIndex) => !isPageFinalised(pageIndex)
-          );
-
-          if (nonFinalisedPages.length === 0) {
+          const activeClassification = getActiveClassification();
+          if (activeClassification && activeClassification !== classItem.id) {
             alert(
-              "All selected pages are already finalised. You cannot add more classifications to finalised pages."
+              `You can only add pages to the active classification (${
+                classes.find((c) => c.id === activeClassification).title
+              }). Please finalize the current classification before starting a new one.`
             );
             return;
           }
 
-          if (nonFinalisedPages.length < selectedPages.length) {
-            alert(
-              `Some selected pages are already finalised and will be skipped. Proceeding with ${nonFinalisedPages.length} non-finalised pages.`
-            );
-          }
+          // Filter out already finalised pages
+          const nonFinalisedPages = selectedPages; //.filter((pageIndex) => !isPageFinalised(pageIndex));
 
-          // Update UI for non-finalised pages
-          nonFinalisedPages.forEach((pageIndex) => {
-            transformThumbnailUI(pageIndex, classItem.color, "Temporary");
-          });
+          // if (nonFinalisedPages.length === 0) {
+          //   alert(
+          //     "All selected pages are already finalised. You cannot add more classifications to finalised pages."
+          //   );
+          //   return;
+          // }
 
-          // Update finalisedData in localStorage
+          // if (nonFinalisedPages.length < selectedPages.length) {
+          //   alert(
+          //     `Some selected pages are already finalised and will be skipped. Proceeding with ${nonFinalisedPages.length} non-finalised pages.`
+          //   );
+          // }
+
+          // Get existing finalisedData from localStorage
           let finalisedData = JSON.parse(
             localStorage.getItem("finalisedData") || "[]"
           );
@@ -314,6 +342,9 @@ export function generateAddToClasses(classes) {
             finalisedData.push(existingItem);
           }
 
+          // Track pages that were actually updated
+          let updatedPages = [];
+
           // Add or update pages in the temporary item
           nonFinalisedPages.forEach((pageIndex) => {
             let existingPage = existingItem.pages.find(
@@ -322,57 +353,64 @@ export function generateAddToClasses(classes) {
             if (existingPage) {
               if (!existingPage.classes.includes(classItem.id)) {
                 existingPage.classes.push(classItem.id);
+                updatedPages.push(pageIndex);
               }
             } else {
               existingItem.pages.push({ pageIndex, classes: [classItem.id] });
+              updatedPages.push(pageIndex);
             }
           });
 
-          localStorage.setItem("finalisedData", JSON.stringify(finalisedData));
-          enableDownIfAllFinalised();
+          // Only update UI and localStorage if changes were made
+          if (updatedPages.length > 0) {
+            // Update UI for updated pages
+            updatedPages.forEach((pageIndex) => {
+              transformThumbnailUI(pageIndex, classItem.color, "Temporary");
+            });
+
+            localStorage.setItem(
+              "finalisedData",
+              JSON.stringify(finalisedData)
+            );
+            enableDownIfAllFinalised();
+            updateClassificationButtonStates();
+            alert(
+              `Added ${classItem.title} to ${updatedPages.length} page(s).`
+            );
+          } else {
+            alert(
+              `The selected class has already been added to all non-finalised pages.`
+            );
+          }
         }
       },
     };
   });
 }
 
-// Configuration for the "Download All" button
-// export const downloadAllClass = {
-//   type: "custom",
-//   id: "DownClasses",
-//   className: "class",
-//   title: "Download Zip",
-//   disabled: true,
-//   onPress: async (event) => {
-//     const finalisedData = JSON.parse(
-//       localStorage.getItem("finalisedData") || "[]"
-//     );
-//     const pdfBuffers = await Promise.all(
-//       finalisedData.map(async (item) => {
-//         if (item.pages && item.pages.length > 0) {
-//           const operations = [
-//             {
-//               type: "keepPages",
-//               pageIndexes: item.pages.map((p) => p.pageIndex),
-//             },
-//           ];
-//           const pdfBuffer = await window.instance.exportPDFWithOperations(
-//             operations
-//           );
-//           return { buffer: pdfBuffer, filename: `${item.label}.pdf` };
-//         }
-//         return null;
-//       })
-//     );
-
-//     const validPdfBuffers = pdfBuffers.filter((buffer) => buffer !== null);
-//     if (validPdfBuffers.length > 0) {
-//       downloadMultiplePDFsAsZip(validPdfBuffers, "documents.zip");
-//     } else {
-//       alert("No finalised pages to download.");
-//     }
-//   },
-// };
+// Add this new function to update classification button states
+export function updateClassificationButtonStates() {
+  const activeClassification = getActiveClassification();
+  window.instance.setDocumentEditorFooterItems((items) => {
+    return items.map((item) => {
+      if (classes.some((c) => c.id === item.id)) {
+        item.disabled =
+          activeClassification && item.id !== activeClassification;
+        // Update the node property if it exists
+        if (item.node) {
+          if (item.disabled) {
+            item.node.setAttribute("disabled", "disabled");
+            item.node.classList.add("disabled");
+          } else {
+            item.node.removeAttribute("disabled");
+            item.node.classList.remove("disabled");
+          }
+        }
+      }
+      return item;
+    });
+  });
+}
 
 export const downloadAllClass = {
   type: "custom",
@@ -449,6 +487,22 @@ export const downloadAllClass = {
   },
 };
 
+// New method to clear all finalisations from UI
+export function clearAllFinalisations() {
+  const thumbnails = window.instance.contentDocument.querySelectorAll(
+    ".PSPDFKit-DocumentEditor-Thumbnails-Page"
+  );
+
+  thumbnails.forEach((thumbnail) => {
+    const circleContainer = thumbnail.querySelector(".circle-container");
+    if (circleContainer) {
+      thumbnail.removeChild(circleContainer);
+
+      // Reset the thumbnail height to its original value
+      thumbnail.style.height = `${parseInt(thumbnail.style.height) - 38}px`;
+    }
+  });
+}
 
 export const Clear = {
   type: "custom",
@@ -457,40 +511,27 @@ export const Clear = {
   title: "Reset",
   disabled: false,
   onPress: async (event) => {
-    localStorage.clear();
-    window.location.reload();
-    enableDownIfClassified();
+    if (
+      confirm(
+        "Are you sure you want to reset? This will clear all classifications."
+      )
+    ) {
+      localStorage.clear();
+      clearAllFinalisations();
+      enableDownIfAllFinalised();
+      updateClassificationButtonStates();
+      alert("All classifications have been reset.");
+    }
   },
 };
 
-// Configuration for the "Finalise" button
 export const finalise = {
   type: "custom",
   id: "Finalise",
   className: "class",
   title: "Finalise",
   disabled: false,
-  onPress: async (event, { setOperations, getSelectedPageIndexes }) => {
-    const selectedPages = getSelectedPageIndexes();
-
-    if (selectedPages.length === 0) {
-      alert("Please select some pages to finalise");
-      return;
-    }
-
-    // Filter out already finalised pages
-    const nonFinalisedPages = selectedPages.filter(
-      (pageIndex) => !isPageFinalised(pageIndex)
-    );
-
-    if (nonFinalisedPages.length === 0) {
-      alert(
-        "All selected pages are already finalised. You cannot finalise pages more than once."
-      );
-      return;
-    }
-
-    // Check if all non-finalised pages have at least one classification
+  onPress: async (event) => {
     let finalisedData = JSON.parse(
       localStorage.getItem("finalisedData") || "[]"
     );
@@ -498,72 +539,145 @@ export const finalise = {
       (item) => item.label === "Temporary"
     );
 
-    const pagesWithoutClassification = nonFinalisedPages.filter((pageIndex) => {
-      const existingPage = temporaryItem
-        ? temporaryItem.pages.find((p) => p.pageIndex === pageIndex)
-        : null;
-      return !existingPage || existingPage.classes.length === 0;
-    });
-
-    if (pagesWithoutClassification.length > 0) {
-      alert(
-        `Some pages don't have any classification. Please add at least one classification to all selected pages before finalising.`
-      );
+    if (!temporaryItem || temporaryItem.pages.length === 0) {
+      alert("There are no temporary classifications to finalise.");
       return;
     }
 
-    if (nonFinalisedPages.length < selectedPages.length) {
-      alert(
-        `Some selected pages are already finalised and will be skipped. Proceeding with ${nonFinalisedPages.length} non-finalised pages.`
-      );
-    }
-
-    const label = window.prompt("Label");
+    const label = window.prompt("Label for finalised classification:");
     if (label !== null && label !== "") {
-      let finalisedData = JSON.parse(
-        localStorage.getItem("finalisedData") || "[]"
-      );
-      const temporaryItem = finalisedData.find(
-        (item) => item.label === "Temporary"
-      );
-
-      // Create finalised pages from selected non-finalised pages
-      const finalizedPages = nonFinalisedPages.map((pageIndex) => {
-        const existingPage = temporaryItem
-          ? temporaryItem.pages.find((p) => p.pageIndex === pageIndex)
-          : null;
-        return {
-          pageIndex: pageIndex,
-          classes: existingPage ? existingPage.classes : [],
-        };
-      });
-
-      // Create new finalised item
+      // Create new finalised item with all pages from temporary
       const newItem = {
         label: label,
-        pages: finalizedPages,
+        pages: [...temporaryItem.pages],
       };
 
-      // Remove the pages from the temporary item
-      if (temporaryItem) {
-        temporaryItem.pages = temporaryItem.pages.filter(
-          (p) => !nonFinalisedPages.includes(p.pageIndex)
-        );
-      }
-
+      // Add the new finalised item
       finalisedData.push(newItem);
 
-      // Remove the temporary item if it's empty
-      finalisedData = finalisedData.filter(
-        (item) => item.label !== "Temporary" || item.pages.length > 0
-      );
+      // Remove the temporary item
+      finalisedData = finalisedData.filter(item => item.label !== "Temporary");
 
       localStorage.setItem("finalisedData", JSON.stringify(finalisedData));
       console.log("Finalized data:", finalisedData);
-      alert(`Finalised ${nonFinalisedPages.length} pages`);
-      // applyStoredFinalisations();
+      alert(`Finalised ${newItem.pages.length} pages`);
+      clearAllFinalisations();
+      applyStoredFinalisations();
       enableDownIfAllFinalised();
-      window.location.reload();
+      updateClassificationButtonStates();
     }
   },
 };
+
+// Configuration for the "Finalise" button
+// export const finalise = {
+//   type: "custom",
+//   id: "Finalise",
+//   className: "class",
+//   title: "Finalise",
+//   disabled: false,
+//   onPress: async (event, { setOperations, getSelectedPageIndexes }) => {
+//     const selectedPages = getSelectedPageIndexes();
+
+//     if (selectedPages.length === 0) {
+//       alert("Please select some pages to finalise");
+//       return;
+//     }
+
+//     // Filter out already finalised pages
+//     const nonFinalisedPages = selectedPages//.filter((pageIndex) => !isPageFinalised(pageIndex));
+
+//     if (nonFinalisedPages.length === 0) {
+//       alert(
+//         "All selected pages are already finalised. You cannot finalise pages more than once."
+//       );
+//       return;
+//     }
+
+//     // Check if all non-finalised pages have at least one classification
+//     let finalisedData = JSON.parse(
+//       localStorage.getItem("finalisedData") || "[]"
+//     );
+//     const temporaryItem = finalisedData.find(
+//       (item) => item.label === "Temporary"
+//     );
+
+//     const pagesWithoutClassification = nonFinalisedPages.filter((pageIndex) => {
+//       const existingPage = temporaryItem
+//         ? temporaryItem.pages.find((p) => p.pageIndex === pageIndex)
+//         : null;
+//       return !existingPage || existingPage.classes.length === 0;
+//     });
+
+//     if (pagesWithoutClassification.length > 0) {
+//       alert(
+//         `Some pages don't have any classification. Please add at least one classification to all selected pages before finalising.`
+//       );
+//       return;
+//     }
+
+//     // if (nonFinalisedPages.length < selectedPages.length) {
+//     //   alert(
+//     //     `Some selected pages are already finalised and will be skipped. Proceeding with ${nonFinalisedPages.length} non-finalised pages.`
+//     //   );
+//     // }
+
+//     const label = window.prompt("Label");
+//     if (label !== null && label !== "") {
+//       let finalisedData = JSON.parse(
+//         localStorage.getItem("finalisedData") || "[]"
+//       );
+//       const temporaryItem = finalisedData.find(
+//         (item) => item.label === "Temporary"
+//       );
+
+//       // Create finalised pages from selected non-finalised pages
+//       const finalizedPages = nonFinalisedPages.map((pageIndex) => {
+//         const existingPage = temporaryItem
+//           ? temporaryItem.pages.find((p) => p.pageIndex === pageIndex)
+//           : null;
+//         return {
+//           pageIndex: pageIndex,
+//           classes: existingPage ? existingPage.classes : [],
+//         };
+//       });
+
+//       // Create new finalised item
+//       const newItem = {
+//         label: label,
+//         pages: finalizedPages,
+//       };
+
+//       // Remove the pages from the temporary item
+//       if (temporaryItem) {
+//         temporaryItem.pages = temporaryItem.pages.filter(
+//           (p) => !nonFinalisedPages.includes(p.pageIndex)
+//         );
+//       }
+
+//       finalisedData.push(newItem);
+
+//       // Remove the temporary item if it's empty
+//       finalisedData = finalisedData.filter(
+//         (item) => item.label !== "Temporary" || item.pages.length > 0
+//       );
+
+//       localStorage.setItem("finalisedData", JSON.stringify(finalisedData));
+//       console.log("Finalized data:", finalisedData);
+//       alert(`Finalised ${nonFinalisedPages.length} pages`);
+//       clearAllFinalisations();
+//       applyStoredFinalisations();
+//       enableDownIfAllFinalised();
+//       updateClassificationButtonStates();
+//     }
+//   },
+// };
+
+// Add this function at the top of your index.js file
+export function handleSearch(event) {
+  if (event.key.toLowerCase() === 'f' && (event.ctrlKey || event.metaKey)) {
+    console.log("Search shortcut detected");
+    event.preventDefault(); // Prevent the default browser search
+    // Do nothing else
+  }
+}
