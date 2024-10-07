@@ -160,6 +160,14 @@ function uploadDoc() {
     const reader = new FileReader();
     reader.onload = function(e) {
       status.textContent = "Upload successful. Initializing PDF viewer...";
+      const lastFileName = localStorage.getItem('lastFileName') || '';
+
+      // If the file name has changed, remove the finalised data
+      if(file.name !== lastFileName){
+        localStorage.setItem('lastFileName', file.name);
+        localStorage.removeItem('finalisedData');
+      }
+
       initializePSPDFKit(e.target.result);
     };
     reader.readAsArrayBuffer(file);
