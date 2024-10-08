@@ -496,6 +496,9 @@ export function clearAllFinalisations() {
   thumbnails.forEach((thumbnail) => {
     const circleContainer = thumbnail.querySelector(".circle-container");
     if (circleContainer) {
+      // Remove all SVG elements (circles) from the container
+      circleContainer.innerHTML = '';
+      
       thumbnail.removeChild(circleContainer);
 
       // Reset the thumbnail height to its original value
