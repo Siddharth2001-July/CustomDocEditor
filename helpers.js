@@ -41,18 +41,6 @@ export const classes = [
   },
 ];
 
-// Helper function to check if a page is already finalised
-function isPageFinalised(pageIndex) {
-  const finalisedData = JSON.parse(
-    localStorage.getItem("finalisedData") || "[]"
-  );
-  return finalisedData.some(
-    (item) =>
-      item.label !== "Temporary" &&
-      item.pages.some((page) => page.pageIndex === pageIndex)
-  );
-}
-
 // Enable or disable the download button based on whether all pages are finalised
 export function enableDownIfAllFinalised() {
   const totalPages = window.instance.totalPageCount;
@@ -96,19 +84,6 @@ export function downloadFile(buffer, filename) {
   document.body.removeChild(link);
 }
 
-// Save finalised data to localStorage
-export function saveFinalisation(label, pages) {
-  let finalisedData = JSON.parse(localStorage.getItem("finalisedData") || "[]");
-  finalisedData.push({ label, pages });
-  localStorage.setItem("finalisedData", JSON.stringify(finalisedData));
-}
-
-// Get all finalised pages from localStorage
-export function getFinalisedPages() {
-  let finalisedData = JSON.parse(localStorage.getItem("finalisedData") || "[]");
-  return finalisedData.flatMap((item) => item.pages);
-}
-
 // Apply stored finalisations to the document UI
 export function applyStoredFinalisations() {
   setTimeout(() => {
@@ -127,153 +102,6 @@ export function applyStoredFinalisations() {
     });
     enableDownIfAllFinalised();
   }, 100);
-}
-
-export async function downloadMultiplePDFsAsZip(pdfBuffers, zipFilename) {
-  const zip = new JSZip();
-
-  // Add each PDF buffer to the zip file
-  pdfBuffers.forEach(({ buffer, filename }) => {
-    zip.file(filename, buffer, { binary: true });
-  });
-
-  // Generate the zip file and trigger the download
-  const zipBlob = await zip.generateAsync({ type: "blob" });
-  const link = document.createElement("a");
-  link.href = URL.createObjectURL(zipBlob);
-  link.download = zipFilename;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-}
-
-function transformThumbnailUI(pageIndex, color, label) {
-  const thumbnail = window.instance.contentDocument.querySelector(
-    `.PSPDFKit-DocumentEditor-Thumbnails-Page[data-page-index="${pageIndex}"]`
-  );
-
-  if (!thumbnail) {
-    console.error(`Thumbnail for page ${pageIndex} not found`);
-    return;
-  }
-
-  let circleContainer = thumbnail.querySelector(".circle-container");
-
-  if (!circleContainer) {
-    circleContainer = document.createElement("div");
-    circleContainer.classList.add("circle-container");
-    circleContainer.style.display = "flex";
-    circleContainer.style.justifyContent = "center";
-    circleContainer.style.alignItems = "center";
-    circleContainer.style.height = "28px";
-    circleContainer.style.marginTop = "-2px";
-    circleContainer.style.marginBottom = "2px";
-    circleContainer.style.overflowX = "auto";
-    circleContainer.style.overflowY = "hidden";
-    circleContainer.style.whiteSpace = "nowrap";
-    circleContainer.style.paddingBottom = "5px";
-
-    circleContainer.style.scrollbarWidth = "thin";
-    circleContainer.style.scrollbarColor = "#888 #f1f1f1";
-
-    thumbnail.appendChild(circleContainer);
-
-    thumbnail.style.height = `${parseInt(thumbnail.style.height) + 38}px`;
-  }
-
-  // Create and add new color circle
-  const circle = createColorCircle(color, label !== "Temporary");
-  circle.classList.add("color-circle");
-  circle.style.flexShrink = "0";
-  circle.style.marginRight = "6px";
-
-  // Add tooltip functionality
-  if (label !== "Temporary") {
-    circle.setAttribute("title", label);
-    circle.style.cursor = "pointer";
-
-    // Create a tooltip element
-    const tooltip = document.createElement("div");
-    tooltip.id = `tooltip-${pageIndex}`;
-    tooltip.textContent = label;
-    tooltip.style.position = "absolute";
-    tooltip.style.backgroundColor = "grey";
-    tooltip.style.opacity = 0.6;
-    tooltip.style.color = "white";
-    tooltip.style.padding = "3px 8px";
-    tooltip.style.borderRadius = "3px";
-    tooltip.style.zIndex = "1000";
-    tooltip.style.display = "none";
-
-    // Show tooltip on mouseover
-    circle.addEventListener("mouseover", (e) => {
-      tooltip.style.display = "block";
-      tooltip.style.left = `${e.pageX + 10}px`;
-      tooltip.style.top = `${e.pageY + 10}px`;
-      document.body.appendChild(tooltip);
-    });
-
-    // Hide tooltip on mouseout
-    circle.addEventListener("mouseout", () => {
-      tooltip.style.display = "none";
-      document.body.removeChild(tooltip);
-    });
-  }
-
-  circleContainer.appendChild(circle);
-}
-
-// Helper function to create a color circle SVG
-function createColorCircle(color, hasBorder = false) {
-  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-  svg.setAttribute("width", "18");
-  svg.setAttribute("height", "18");
-
-  // Define the filter for drop shadow
-  const filter = document.createElementNS(
-    "http://www.w3.org/2000/svg",
-    "filter"
-  );
-  filter.setAttribute("id", "drop-shadow");
-  filter.innerHTML = `
-    <feGaussianBlur in="SourceAlpha" stdDeviation="0.7" result="blur"/>
-    <feOffset in="blur" dx="0.7" dy="0.7" result="offsetBlur"/>
-    <feMerge>
-      <feMergeNode in="offsetBlur"/>
-      <feMergeNode in="SourceGraphic"/>
-    </feMerge>
-  `;
-  svg.appendChild(filter);
-
-  const circle = document.createElementNS(
-    "http://www.w3.org/2000/svg",
-    "circle"
-  );
-  circle.setAttribute("cx", "9");
-  circle.setAttribute("cy", "9");
-  circle.setAttribute("r", "7.5");
-  circle.setAttribute("fill", `rgb(${color.r},${color.g},${color.b})`);
-
-  if (hasBorder) {
-    circle.setAttribute("stroke", "black");
-    circle.setAttribute("stroke-width", "1");
-  }
-
-  circle.setAttribute("filter", "url(#drop-shadow)");
-
-  svg.appendChild(circle);
-  return svg;
-}
-
-// Add this new function to check if any temporary classifications exist
-export function hasTemporaryClassifications() {
-  const finalisedData = JSON.parse(
-    localStorage.getItem("finalisedData") || "[]"
-  );
-  const temporaryItem = finalisedData.find(
-    (item) => item.label === "Temporary"
-  );
-  return temporaryItem && temporaryItem.pages.length > 0;
 }
 
 // Add this new function to get the currently active classification
@@ -412,6 +240,66 @@ export function updateClassificationButtonStates() {
   });
 }
 
+// Add this function at the top of your index.js file
+export function handleSearch(event) {
+  if (event.key.toLowerCase() === 'f' && (event.ctrlKey || event.metaKey)) {
+    console.log("Search shortcut detected");
+    event.preventDefault(); // Prevent the default browser search
+    // Do nothing else
+  }
+}
+
+export async function listenForScrollUI() {
+  const scrollContainer = await getScrollContainer();
+  if (scrollContainer) {
+    let isScrolling = false;
+    let lastScrollTime = 0;
+
+    scrollContainer.addEventListener(
+      "scroll",
+      () => {
+        lastScrollTime = Date.now();
+        if (!isScrolling) {
+          isScrolling = true;
+          requestAnimationFrame(async function checkScrollEnd() {
+            if (Date.now() - lastScrollTime > 150) {
+              isScrolling = false;
+              // Scroll ended - reapplying finalizations
+              clearAllFinalisations();
+              applyStoredFinalisations();
+            } else {
+              requestAnimationFrame(checkScrollEnd);
+            }
+          });
+        }
+      },
+      { passive: true }
+    );
+  } else {
+    console.error("Scrollable element not found.");
+  }
+}
+
+// New method to clear all finalisations from UI
+export function clearAllFinalisations() {
+  const thumbnails = window.instance.contentDocument.querySelectorAll(
+    ".PSPDFKit-DocumentEditor-Thumbnails-Page"
+  );
+
+  thumbnails.forEach((thumbnail) => {
+    const circleContainer = thumbnail.querySelector(".circle-container");
+    if (circleContainer) {
+      // Remove all SVG elements (circles) from the container
+      circleContainer.innerHTML = '';
+      
+      thumbnail.removeChild(circleContainer);
+
+      // Reset the thumbnail height to its original value
+      thumbnail.style.height = `${parseInt(thumbnail.style.height) - 38}px`;
+    }
+  });
+}
+
 export const downloadAllClass = {
   type: "custom",
   id: "DownClasses",
@@ -487,26 +375,6 @@ export const downloadAllClass = {
   },
 };
 
-// New method to clear all finalisations from UI
-export function clearAllFinalisations() {
-  const thumbnails = window.instance.contentDocument.querySelectorAll(
-    ".PSPDFKit-DocumentEditor-Thumbnails-Page"
-  );
-
-  thumbnails.forEach((thumbnail) => {
-    const circleContainer = thumbnail.querySelector(".circle-container");
-    if (circleContainer) {
-      // Remove all SVG elements (circles) from the container
-      circleContainer.innerHTML = '';
-      
-      thumbnail.removeChild(circleContainer);
-
-      // Reset the thumbnail height to its original value
-      thumbnail.style.height = `${parseInt(thumbnail.style.height) - 38}px`;
-    }
-  });
-}
-
 export const Clear = {
   type: "custom",
   id: "Clear",
@@ -572,115 +440,137 @@ export const finalise = {
   },
 };
 
-// Configuration for the "Finalise" button
-// export const finalise = {
-//   type: "custom",
-//   id: "Finalise",
-//   className: "class",
-//   title: "Finalise",
-//   disabled: false,
-//   onPress: async (event, { setOperations, getSelectedPageIndexes }) => {
-//     const selectedPages = getSelectedPageIndexes();
+function transformThumbnailUI(pageIndex, color, label) {
+  const thumbnail = window.instance.contentDocument.querySelector(
+    `.PSPDFKit-DocumentEditor-Thumbnails-Page[data-page-index="${pageIndex}"]`
+  );
 
-//     if (selectedPages.length === 0) {
-//       alert("Please select some pages to finalise");
-//       return;
-//     }
-
-//     // Filter out already finalised pages
-//     const nonFinalisedPages = selectedPages//.filter((pageIndex) => !isPageFinalised(pageIndex));
-
-//     if (nonFinalisedPages.length === 0) {
-//       alert(
-//         "All selected pages are already finalised. You cannot finalise pages more than once."
-//       );
-//       return;
-//     }
-
-//     // Check if all non-finalised pages have at least one classification
-//     let finalisedData = JSON.parse(
-//       localStorage.getItem("finalisedData") || "[]"
-//     );
-//     const temporaryItem = finalisedData.find(
-//       (item) => item.label === "Temporary"
-//     );
-
-//     const pagesWithoutClassification = nonFinalisedPages.filter((pageIndex) => {
-//       const existingPage = temporaryItem
-//         ? temporaryItem.pages.find((p) => p.pageIndex === pageIndex)
-//         : null;
-//       return !existingPage || existingPage.classes.length === 0;
-//     });
-
-//     if (pagesWithoutClassification.length > 0) {
-//       alert(
-//         `Some pages don't have any classification. Please add at least one classification to all selected pages before finalising.`
-//       );
-//       return;
-//     }
-
-//     // if (nonFinalisedPages.length < selectedPages.length) {
-//     //   alert(
-//     //     `Some selected pages are already finalised and will be skipped. Proceeding with ${nonFinalisedPages.length} non-finalised pages.`
-//     //   );
-//     // }
-
-//     const label = window.prompt("Label");
-//     if (label !== null && label !== "") {
-//       let finalisedData = JSON.parse(
-//         localStorage.getItem("finalisedData") || "[]"
-//       );
-//       const temporaryItem = finalisedData.find(
-//         (item) => item.label === "Temporary"
-//       );
-
-//       // Create finalised pages from selected non-finalised pages
-//       const finalizedPages = nonFinalisedPages.map((pageIndex) => {
-//         const existingPage = temporaryItem
-//           ? temporaryItem.pages.find((p) => p.pageIndex === pageIndex)
-//           : null;
-//         return {
-//           pageIndex: pageIndex,
-//           classes: existingPage ? existingPage.classes : [],
-//         };
-//       });
-
-//       // Create new finalised item
-//       const newItem = {
-//         label: label,
-//         pages: finalizedPages,
-//       };
-
-//       // Remove the pages from the temporary item
-//       if (temporaryItem) {
-//         temporaryItem.pages = temporaryItem.pages.filter(
-//           (p) => !nonFinalisedPages.includes(p.pageIndex)
-//         );
-//       }
-
-//       finalisedData.push(newItem);
-
-//       // Remove the temporary item if it's empty
-//       finalisedData = finalisedData.filter(
-//         (item) => item.label !== "Temporary" || item.pages.length > 0
-//       );
-
-//       localStorage.setItem("finalisedData", JSON.stringify(finalisedData));
-//       console.log("Finalized data:", finalisedData);
-//       alert(`Finalised ${nonFinalisedPages.length} pages`);
-//       clearAllFinalisations();
-//       applyStoredFinalisations();
-//       enableDownIfAllFinalised();
-//       updateClassificationButtonStates();
-//     }
-//   },
-// };
-
-// Add this function at the top of your index.js file
-export function handleSearch(event) {
-  if (event.key.toLowerCase() === 'f' && (event.ctrlKey || event.metaKey)) {
-    console.log("Search shortcut detected");
-    event.preventDefault(); // Prevent the default browser search
-    // Do nothing else
+  if (!thumbnail) {
+    // console.error(`Thumbnail for page ${pageIndex} not found`);
+    return;
   }
+
+  let circleContainer = thumbnail.querySelector(".circle-container");
+
+  if (!circleContainer) {
+    circleContainer = document.createElement("div");
+    circleContainer.classList.add("circle-container");
+    circleContainer.style.display = "flex";
+    circleContainer.style.justifyContent = "center";
+    circleContainer.style.alignItems = "center";
+    circleContainer.style.height = "28px";
+    circleContainer.style.marginTop = "-2px";
+    circleContainer.style.marginBottom = "2px";
+    circleContainer.style.overflowX = "auto";
+    circleContainer.style.overflowY = "hidden";
+    circleContainer.style.whiteSpace = "nowrap";
+    circleContainer.style.paddingBottom = "5px";
+
+    circleContainer.style.scrollbarWidth = "thin";
+    circleContainer.style.scrollbarColor = "#888 #f1f1f1";
+
+    thumbnail.appendChild(circleContainer);
+
+    thumbnail.style.height = `${parseInt(thumbnail.style.height) + 38}px`;
+  }
+
+  // Create and add new color circle
+  const circle = createColorCircle(color, label !== "Temporary");
+  circle.classList.add("color-circle");
+  circle.style.flexShrink = "0";
+  circle.style.marginRight = "6px";
+
+  // Add tooltip functionality
+  if (label !== "Temporary") {
+    circle.setAttribute("title", label);
+    circle.style.cursor = "pointer";
+
+    // Create a tooltip element
+    const tooltip = document.createElement("div");
+    tooltip.id = `tooltip-${pageIndex}`;
+    tooltip.textContent = label;
+    tooltip.style.position = "absolute";
+    tooltip.style.backgroundColor = "grey";
+    tooltip.style.opacity = 0.6;
+    tooltip.style.color = "white";
+    tooltip.style.padding = "3px 8px";
+    tooltip.style.borderRadius = "3px";
+    tooltip.style.zIndex = "1000";
+    tooltip.style.display = "none";
+
+    // Show tooltip on mouseover
+    circle.addEventListener("mouseover", (e) => {
+      tooltip.style.display = "block";
+      tooltip.style.left = `${e.pageX + 10}px`;
+      tooltip.style.top = `${e.pageY + 10}px`;
+      document.body.appendChild(tooltip);
+    });
+
+    // Hide tooltip on mouseout
+    circle.addEventListener("mouseout", () => {
+      tooltip.style.display = "none";
+      document.body.removeChild(tooltip);
+    });
+  }
+
+  circleContainer.appendChild(circle);
+}
+
+// Helper function to create a color circle SVG
+function createColorCircle(color, hasBorder = false) {
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("width", "18");
+  svg.setAttribute("height", "18");
+
+  // Define the filter for drop shadow
+  const filter = document.createElementNS(
+    "http://www.w3.org/2000/svg",
+    "filter"
+  );
+  filter.setAttribute("id", "drop-shadow");
+  filter.innerHTML = `
+    <feGaussianBlur in="SourceAlpha" stdDeviation="0.7" result="blur"/>
+    <feOffset in="blur" dx="0.7" dy="0.7" result="offsetBlur"/>
+    <feMerge>
+      <feMergeNode in="offsetBlur"/>
+      <feMergeNode in="SourceGraphic"/>
+    </feMerge>
+  `;
+  svg.appendChild(filter);
+
+  const circle = document.createElementNS(
+    "http://www.w3.org/2000/svg",
+    "circle"
+  );
+  circle.setAttribute("cx", "9");
+  circle.setAttribute("cy", "9");
+  circle.setAttribute("r", "7.5");
+  circle.setAttribute("fill", `rgb(${color.r},${color.g},${color.b})`);
+
+  if (hasBorder) {
+    circle.setAttribute("stroke", "black");
+    circle.setAttribute("stroke-width", "1");
+  }
+
+  circle.setAttribute("filter", "url(#drop-shadow)");
+
+  svg.appendChild(circle);
+  return svg;
+}
+
+async function getScrollContainer() {
+  let attempts = 0;
+  while (attempts < 10) {
+    const scrollContainer = instance.contentDocument.querySelector(
+      '[data-testid="scroll"]'
+    );
+    if (scrollContainer) {
+      return scrollContainer;
+    }
+    attempts++;
+    // console.log("Scroll container not found. Retrying..."+attempts);
+    
+    await new Promise((resolve) => setTimeout(resolve, 50)); // Retry after 50ms
+  }
+  return null;
 }

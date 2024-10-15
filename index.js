@@ -8,7 +8,7 @@ import {
   finalise,
   updateClassificationButtonStates,
   handleSearch,
-  clearAllFinalisations
+  listenForScrollUI
 } from "./helpers.js";
 
 // We need to inform PSPDFKit where to look for its library assets, i.e. the location of the `pspdfkit-lib` directory.
@@ -58,34 +58,6 @@ const docEditFootItems = [
   // ...PSPDFKit.defaultDocumentEditorFooterItems,
 ];
 
-function listenForScrollUI() {
-  setTimeout(() => {
-    const scrollContainer = instance.contentDocument.querySelector('[data-testid="scroll"]');
-    if (scrollContainer) {
-      let isScrolling = false;
-      let lastScrollTime = 0;
-
-      scrollContainer.addEventListener('scroll', () => {
-        lastScrollTime = Date.now();
-        if (!isScrolling) {
-          isScrolling = true;
-          requestAnimationFrame(function checkScrollEnd() {
-            if (Date.now() - lastScrollTime > 150) {
-              isScrolling = false;
-              console.log("Scroll ended - reapplying finalisations");
-              clearAllFinalisations();
-              applyStoredFinalisations();
-            } else {
-              requestAnimationFrame(checkScrollEnd);
-            }
-          });
-        }
-      }, { passive: true });
-    } else {
-      console.error("Scrollable element not found.");
-    }
-  }, 100);
-}
 
 function initializePSPDFKit(pdfArrayBuffer) {
   document.getElementById('drop-area').style.display = 'none';
@@ -107,13 +79,13 @@ function initializePSPDFKit(pdfArrayBuffer) {
       applyStoredFinalisations();
       updateClassificationButtonStates();
       instance.contentDocument.addEventListener('keydown', handleSearch);
-      instance.setViewState(viewState =>
+      await instance.setViewState(viewState =>
         viewState.set(
           "interactionMode",
           PSPDFKit.InteractionMode.DOCUMENT_EDITOR
-        ),
-        listenForScrollUI()
+        )
       );
+      await listenForScrollUI();
       instance.addEventListener(
         "viewState.change",
         (viewState, previousViewState) => {
