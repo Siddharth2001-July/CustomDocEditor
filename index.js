@@ -76,12 +76,17 @@ function initializePSPDFKit(pdfArrayBuffer) {
     .then(async (instance) => {
       // console.clear();
       window.instance = instance;
+      window.finalisedData = JSON.parse(
+        localStorage.getItem("finalisedData") || "[]"
+      );
+      
       instance.contentDocument.addEventListener('keydown', handleSearch);
       await instance.setViewState(viewState =>
         viewState.set(
           "interactionMode",
           PSPDFKit.InteractionMode.DOCUMENT_EDITOR
-        )
+        ),
+        applyStoredFinalisations()
       );
       applyStoredFinalisations();
       updateClassificationButtonStates();
@@ -172,11 +177,6 @@ function uploadDoc() {
       if(file.name !== lastFileName){
         localStorage.setItem('lastFileName', file.name);
         localStorage.removeItem('finalisedData');
-      }
-      else{
-        window.finalisedData = JSON.parse(
-          localStorage.getItem("finalisedData") || "[]"
-        );
       }
 
       initializePSPDFKit(e.target.result);
