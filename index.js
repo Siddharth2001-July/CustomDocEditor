@@ -6,10 +6,8 @@ import {
   generateAddToClasses,
   Clear,
   finalise,
-  updateClassificationButtonStates,
   handleSearch,
   listenForScrollUI,
-  clearAllFinalisations
 } from "./helpers.js";
 
 // We need to inform PSPDFKit where to look for its library assets, i.e. the location of the `pspdfkit-lib` directory.
@@ -88,9 +86,7 @@ function initializePSPDFKit(pdfArrayBuffer) {
             viewState.get("interactionMode") ===
             PSPDFKit.InteractionMode.DOCUMENT_EDITOR
           ) {
-            clearAllFinalisations();
             applyStoredFinalisations();
-            updateClassificationButtonStates();
           }
         }
       );
@@ -101,9 +97,7 @@ function initializePSPDFKit(pdfArrayBuffer) {
           PSPDFKit.InteractionMode.DOCUMENT_EDITOR
         )
       );
-      clearAllFinalisations();
       applyStoredFinalisations();
-      updateClassificationButtonStates();
       await listenForScrollUI();
     })
     .catch((error) => {

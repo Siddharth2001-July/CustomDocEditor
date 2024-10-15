@@ -91,6 +91,7 @@ export function applyStoredFinalisations() {
     // let finalisedData = JSON.parse(
     //   localStorage.getItem("finalisedData") || "[]"
     // );
+    clearAllFinalisations();
     window.finalisedData.forEach((item) => {
       item.pages.forEach((page) => {
         page.classes.forEach((classId) => {
@@ -102,6 +103,7 @@ export function applyStoredFinalisations() {
       });
     });
     enableDownIfAllFinalised();
+    updateClassificationButtonStates();
   }, 100);
 }
 
@@ -266,7 +268,6 @@ export async function listenForScrollUI() {
             if (Date.now() - lastScrollTime > 150) {
               isScrolling = false;
               // Scroll ended - reapplying finalizations
-              clearAllFinalisations();
               applyStoredFinalisations();
             } else {
               requestAnimationFrame(checkScrollEnd);
@@ -434,10 +435,7 @@ export const finalise = {
       localStorage.setItem("finalisedData", JSON.stringify(window.finalisedData));
       // console.log("Finalized data:", finalisedData);
       alert(`Finalised ${newItem.pages.length} pages`);
-      clearAllFinalisations();
       applyStoredFinalisations();
-      enableDownIfAllFinalised();
-      updateClassificationButtonStates();
     }
   },
 };
