@@ -8,7 +8,8 @@ import {
   finalise,
   updateClassificationButtonStates,
   handleSearch,
-  listenForScrollUI
+  listenForScrollUI,
+  clearAllFinalisations
 } from "./helpers.js";
 
 // We need to inform PSPDFKit where to look for its library assets, i.e. the location of the `pspdfkit-lib` directory.
