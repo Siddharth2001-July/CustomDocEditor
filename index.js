@@ -76,8 +76,6 @@ function initializePSPDFKit(pdfArrayBuffer) {
     .then(async (instance) => {
       // console.clear();
       window.instance = instance;
-      applyStoredFinalisations();
-      updateClassificationButtonStates();
       instance.contentDocument.addEventListener('keydown', handleSearch);
       await instance.setViewState(viewState =>
         viewState.set(
@@ -85,6 +83,8 @@ function initializePSPDFKit(pdfArrayBuffer) {
           PSPDFKit.InteractionMode.DOCUMENT_EDITOR
         )
       );
+      applyStoredFinalisations();
+      updateClassificationButtonStates();
       await listenForScrollUI();
       instance.addEventListener(
         "viewState.change",
