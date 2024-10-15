@@ -94,10 +94,10 @@ export function applyStoredFinalisations() {
     clearAllFinalisations();
     window.finalisedData.forEach((item) => {
       item.pages.forEach((page) => {
-        page.classes.forEach((classId) => {
+        page.classes.forEach(async (classId) => {
           const classItem = classes.find((c) => c.id === classId);
           if (classItem) {
-            transformThumbnailUI(page.pageIndex, classItem.color, item.label);
+            await transformThumbnailUI(page.pageIndex, classItem.color, item.label);
           }
         });
       });
@@ -195,8 +195,8 @@ export function generateAddToClasses(classes) {
           // Only update UI and localStorage if changes were made
           if (updatedPages.length > 0) {
             // Update UI for updated pages
-            updatedPages.forEach((pageIndex) => {
-              transformThumbnailUI(pageIndex, classItem.color, "Temporary");
+            updatedPages.forEach(async (pageIndex) => {
+              await transformThumbnailUI(pageIndex, classItem.color, "Temporary");
             });
 
             localStorage.setItem(
@@ -440,10 +440,21 @@ export const finalise = {
   },
 };
 
-function transformThumbnailUI(pageIndex, color, label) {
-  const thumbnail = window.instance.contentDocument.querySelector(
-    `.PSPDFKit-DocumentEditor-Thumbnails-Page[data-page-index="${pageIndex}"]`
-  );
+async function transformThumbnailUI(pageIndex, color, label) {
+  let thumbnail = null;
+  let attempts = 0;
+  const maxAttempts = 5;
+
+  while (!thumbnail && attempts < maxAttempts) {
+    thumbnail = window.instance.contentDocument.querySelector(
+      `.PSPDFKit-DocumentEditor-Thumbnails-Page[data-page-index="${pageIndex}"]`
+    );
+
+    if (!thumbnail) {
+      attempts++;
+      await new Promise(resolve => setTimeout(resolve, 100)); // Wait 100ms before retrying
+    }
+  }
 
   if (!thumbnail) {
     // console.error(`Thumbnail for page ${pageIndex} not found`);
