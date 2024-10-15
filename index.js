@@ -70,7 +70,7 @@ function initializePSPDFKit(pdfArrayBuffer) {
     toolbarItems: [...PSPDFKit.defaultToolbarItems],
     documentEditorToolbarItems: [...docEditToolItems],
     documentEditorFooterItems: [...docEditFootItems],
-    initialViewState: new PSPDFKit.ViewState().set("interactionMode",PSPDFKit.InteractionMode.DOCUMENT_EDITOR),
+    // initialViewState: new PSPDFKit.ViewState().set("interactionMode",PSPDFKit.InteractionMode.DOCUMENT_EDITOR),
     styleSheets: [`/style.css`],
   })
     .then(async (instance) => {
@@ -80,21 +80,9 @@ function initializePSPDFKit(pdfArrayBuffer) {
         localStorage.getItem("finalisedData") || "[]"
       );
       
-      instance.contentDocument.addEventListener('keydown', handleSearch);
-      await instance.setViewState(viewState =>
-        viewState.set(
-          "interactionMode",
-          PSPDFKit.InteractionMode.DOCUMENT_EDITOR
-        ),
-        applyStoredFinalisations()
-      );
-      applyStoredFinalisations();
-      updateClassificationButtonStates();
-      await listenForScrollUI();
       instance.addEventListener(
         "viewState.change",
         (viewState, previousViewState) => {
-          console.log("viewState.change", viewState, previousViewState);
           if (
             viewState.get("interactionMode") ===
             PSPDFKit.InteractionMode.DOCUMENT_EDITOR
@@ -104,6 +92,16 @@ function initializePSPDFKit(pdfArrayBuffer) {
           }
         }
       );
+      instance.contentDocument.addEventListener('keydown', handleSearch);
+      await instance.setViewState(viewState =>
+        viewState.set(
+          "interactionMode",
+          PSPDFKit.InteractionMode.DOCUMENT_EDITOR
+        )
+      );
+      applyStoredFinalisations();
+      updateClassificationButtonStates();
+      await listenForScrollUI();
     })
     .catch((error) => {
       console.error(error.message);
