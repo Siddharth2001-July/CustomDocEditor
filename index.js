@@ -70,7 +70,7 @@ function initializePSPDFKit(pdfArrayBuffer) {
     toolbarItems: [...PSPDFKit.defaultToolbarItems],
     documentEditorToolbarItems: [...docEditToolItems],
     documentEditorFooterItems: [...docEditFootItems],
-    //initialViewState: new PSPDFKit.ViewState().set("interactionMode",PSPDFKit.InteractionMode.DOCUMENT_EDITOR),
+    initialViewState: new PSPDFKit.ViewState().set("interactionMode",PSPDFKit.InteractionMode.DOCUMENT_EDITOR),
     styleSheets: [`/style.css`],
   })
     .then(async (instance) => {
