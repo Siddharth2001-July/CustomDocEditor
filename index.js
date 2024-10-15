@@ -87,6 +87,7 @@ function initializePSPDFKit(pdfArrayBuffer) {
             viewState.get("interactionMode") ===
             PSPDFKit.InteractionMode.DOCUMENT_EDITOR
           ) {
+            clearAllFinalisations();
             applyStoredFinalisations();
             updateClassificationButtonStates();
           }
@@ -99,6 +100,7 @@ function initializePSPDFKit(pdfArrayBuffer) {
           PSPDFKit.InteractionMode.DOCUMENT_EDITOR
         )
       );
+      clearAllFinalisations();
       applyStoredFinalisations();
       updateClassificationButtonStates();
       await listenForScrollUI();
