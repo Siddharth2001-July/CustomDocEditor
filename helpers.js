@@ -44,13 +44,14 @@ export const classes = [
 // Enable or disable the download button based on whether all pages are finalised
 export function enableDownIfAllFinalised() {
   const totalPages = window.instance.totalPageCount;
-  const finalisedData = JSON.parse(
-    localStorage.getItem("finalisedData") || "[]"
-  );
+  // const finalisedData = JSON.parse(
+  //   localStorage.getItem("finalisedData") || "[]"
+  // );
+
 
   // Create a set of all finalised page indices
   const finalisedPages = new Set(
-    finalisedData.flatMap((item) => {
+    window.finalisedData.flatMap((item) => {
       if (item.label !== "Temporary")
         return item.pages.map((page) => page.pageIndex);
     })
@@ -87,10 +88,10 @@ export function downloadFile(buffer, filename) {
 // Apply stored finalisations to the document UI
 export function applyStoredFinalisations() {
   setTimeout(() => {
-    let finalisedData = JSON.parse(
-      localStorage.getItem("finalisedData") || "[]"
-    );
-    finalisedData.forEach((item) => {
+    // let finalisedData = JSON.parse(
+    //   localStorage.getItem("finalisedData") || "[]"
+    // );
+    window.finalisedData.forEach((item) => {
       item.pages.forEach((page) => {
         page.classes.forEach((classId) => {
           const classItem = classes.find((c) => c.id === classId);
@@ -106,10 +107,10 @@ export function applyStoredFinalisations() {
 
 // Add this new function to get the currently active classification
 export function getActiveClassification() {
-  const finalisedData = JSON.parse(
-    localStorage.getItem("finalisedData") || "[]"
-  );
-  const temporaryItem = finalisedData.find(
+  // const finalisedData = JSON.parse(
+  //   localStorage.getItem("finalisedData") || "[]"
+  // );
+  const temporaryItem = window.finalisedData.find(
     (item) => item.label === "Temporary"
   );
   if (temporaryItem && temporaryItem.pages.length > 0) {
@@ -159,15 +160,15 @@ export function generateAddToClasses(classes) {
           // }
 
           // Get existing finalisedData from localStorage
-          let finalisedData = JSON.parse(
-            localStorage.getItem("finalisedData") || "[]"
-          );
-          let existingItem = finalisedData.find(
+          // let finalisedData = JSON.parse(
+          //   localStorage.getItem("finalisedData") || "[]"
+          // );
+          let existingItem = window.finalisedData.find(
             (item) => item.label === "Temporary"
           );
           if (!existingItem) {
             existingItem = { label: "Temporary", pages: [] };
-            finalisedData.push(existingItem);
+            window.finalisedData.push(existingItem);
           }
 
           // Track pages that were actually updated
@@ -198,7 +199,7 @@ export function generateAddToClasses(classes) {
 
             localStorage.setItem(
               "finalisedData",
-              JSON.stringify(finalisedData)
+              JSON.stringify(window.finalisedData)
             );
             enableDownIfAllFinalised();
             updateClassificationButtonStates();
@@ -307,11 +308,11 @@ export const downloadAllClass = {
   title: "Download Zip",
   disabled: true,
   onPress: async (event) => {
-    const finalisedData = JSON.parse(
-      localStorage.getItem("finalisedData") || "[]"
-    );
+    // const finalisedData = JSON.parse(
+    //   localStorage.getItem("finalisedData") || "[]"
+    // );
 
-    if (finalisedData.length === 0) {
+    if (window.finalisedData.length === 0) {
       alert("No finalised pages to download.");
       return;
     }
@@ -320,7 +321,7 @@ export const downloadAllClass = {
 
     // Loop through each classification
     await Promise.all(
-      finalisedData.map(async (item) => {
+      window.finalisedData.map(async (item) => {
         if (item.pages && item.pages.length > 0) {
           const classifiedPagesByClass = {};
 
@@ -387,6 +388,7 @@ export const Clear = {
         "Are you sure you want to reset? This will clear all classifications."
       )
     ) {
+      window.finalisedData = [];
       localStorage.clear();
       clearAllFinalisations();
       enableDownIfAllFinalised();
@@ -403,10 +405,10 @@ export const finalise = {
   title: "Finalise",
   disabled: false,
   onPress: async (event) => {
-    let finalisedData = JSON.parse(
-      localStorage.getItem("finalisedData") || "[]"
-    );
-    const temporaryItem = finalisedData.find(
+    // let finalisedData = JSON.parse(
+    //   localStorage.getItem("finalisedData") || "[]"
+    // );
+    const temporaryItem = window.finalisedData.find(
       (item) => item.label === "Temporary"
     );
 
@@ -424,13 +426,13 @@ export const finalise = {
       };
 
       // Add the new finalised item
-      finalisedData.push(newItem);
+      window.finalisedData.push(newItem);
 
       // Remove the temporary item
-      finalisedData = finalisedData.filter(item => item.label !== "Temporary");
+      window.finalisedData = window.finalisedData.filter(item => item.label !== "Temporary");
 
-      localStorage.setItem("finalisedData", JSON.stringify(finalisedData));
-      console.log("Finalized data:", finalisedData);
+      localStorage.setItem("finalisedData", JSON.stringify(window.finalisedData));
+      // console.log("Finalized data:", finalisedData);
       alert(`Finalised ${newItem.pages.length} pages`);
       clearAllFinalisations();
       applyStoredFinalisations();

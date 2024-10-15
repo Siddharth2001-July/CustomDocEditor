@@ -173,6 +173,11 @@ function uploadDoc() {
         localStorage.setItem('lastFileName', file.name);
         localStorage.removeItem('finalisedData');
       }
+      else{
+        window.finalisedData = JSON.parse(
+          localStorage.getItem("finalisedData") || "[]"
+        );
+      }
 
       initializePSPDFKit(e.target.result);
     };
