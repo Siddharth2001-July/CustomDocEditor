@@ -41,18 +41,6 @@ export const classes = [
   },
 ];
 
-// Helper function to check if a page is already finalised
-function isPageFinalised(pageIndex) {
-  const finalisedData = JSON.parse(
-    localStorage.getItem("finalisedData") || "[]"
-  );
-  return finalisedData.some(
-    (item) =>
-      item.label !== "Temporary" &&
-      item.pages.some((page) => page.pageIndex === pageIndex)
-  );
-}
-
 // Enable or disable the download button based on whether all pages are finalised
 export function enableDownIfAllFinalised() {
   const totalPages = window.instance.totalPageCount;
@@ -84,31 +72,6 @@ export function enableDownIfAllFinalised() {
   });
 }
 
-export function downloadFile(buffer, filename) {
-  const blob = new Blob([buffer], {
-    type: "application/pdf",
-  });
-  const link = document.createElement("a");
-  link.href = URL.createObjectURL(blob);
-  link.download = filename;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-}
-
-// Save finalised data to localStorage
-export function saveFinalisation(label, pages) {
-  let finalisedData = JSON.parse(localStorage.getItem("finalisedData") || "[]");
-  finalisedData.push({ label, pages });
-  localStorage.setItem("finalisedData", JSON.stringify(finalisedData));
-}
-
-// Get all finalised pages from localStorage
-export function getFinalisedPages() {
-  let finalisedData = JSON.parse(localStorage.getItem("finalisedData") || "[]");
-  return finalisedData.flatMap((item) => item.pages);
-}
-
 // Apply stored finalisations to the document UI
 export function applyStoredFinalisations() {
   setTimeout(() => {
@@ -127,24 +90,6 @@ export function applyStoredFinalisations() {
     });
     enableDownIfAllFinalised();
   }, 100);
-}
-
-export async function downloadMultiplePDFsAsZip(pdfBuffers, zipFilename) {
-  const zip = new JSZip();
-
-  // Add each PDF buffer to the zip file
-  pdfBuffers.forEach(({ buffer, filename }) => {
-    zip.file(filename, buffer, { binary: true });
-  });
-
-  // Generate the zip file and trigger the download
-  const zipBlob = await zip.generateAsync({ type: "blob" });
-  const link = document.createElement("a");
-  link.href = URL.createObjectURL(zipBlob);
-  link.download = zipFilename;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
 }
 
 function transformThumbnailUI(pageIndex, color, label) {
@@ -263,17 +208,6 @@ function createColorCircle(color, hasBorder = false) {
 
   svg.appendChild(circle);
   return svg;
-}
-
-// Add this new function to check if any temporary classifications exist
-export function hasTemporaryClassifications() {
-  const finalisedData = JSON.parse(
-    localStorage.getItem("finalisedData") || "[]"
-  );
-  const temporaryItem = finalisedData.find(
-    (item) => item.label === "Temporary"
-  );
-  return temporaryItem && temporaryItem.pages.length > 0;
 }
 
 // Add this new function to get the currently active classification
@@ -484,6 +418,7 @@ export const downloadAllClass = {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    location.reload();
   },
 };
 
@@ -502,7 +437,7 @@ export function clearAllFinalisations() {
       thumbnail.removeChild(circleContainer);
 
       // Reset the thumbnail height to its original value
-      thumbnail.style.height = `${parseInt(thumbnail.style.height) - 38}px`;
+      // thumbnail.style.height = `${parseInt(thumbnail.style.height) - 38}px`;
     }
   });
 }
@@ -572,115 +507,78 @@ export const finalise = {
   },
 };
 
-// Configuration for the "Finalise" button
-// export const finalise = {
-//   type: "custom",
-//   id: "Finalise",
-//   className: "class",
-//   title: "Finalise",
-//   disabled: false,
-//   onPress: async (event, { setOperations, getSelectedPageIndexes }) => {
-//     const selectedPages = getSelectedPageIndexes();
-
-//     if (selectedPages.length === 0) {
-//       alert("Please select some pages to finalise");
-//       return;
-//     }
-
-//     // Filter out already finalised pages
-//     const nonFinalisedPages = selectedPages//.filter((pageIndex) => !isPageFinalised(pageIndex));
-
-//     if (nonFinalisedPages.length === 0) {
-//       alert(
-//         "All selected pages are already finalised. You cannot finalise pages more than once."
-//       );
-//       return;
-//     }
-
-//     // Check if all non-finalised pages have at least one classification
-//     let finalisedData = JSON.parse(
-//       localStorage.getItem("finalisedData") || "[]"
-//     );
-//     const temporaryItem = finalisedData.find(
-//       (item) => item.label === "Temporary"
-//     );
-
-//     const pagesWithoutClassification = nonFinalisedPages.filter((pageIndex) => {
-//       const existingPage = temporaryItem
-//         ? temporaryItem.pages.find((p) => p.pageIndex === pageIndex)
-//         : null;
-//       return !existingPage || existingPage.classes.length === 0;
-//     });
-
-//     if (pagesWithoutClassification.length > 0) {
-//       alert(
-//         `Some pages don't have any classification. Please add at least one classification to all selected pages before finalising.`
-//       );
-//       return;
-//     }
-
-//     // if (nonFinalisedPages.length < selectedPages.length) {
-//     //   alert(
-//     //     `Some selected pages are already finalised and will be skipped. Proceeding with ${nonFinalisedPages.length} non-finalised pages.`
-//     //   );
-//     // }
-
-//     const label = window.prompt("Label");
-//     if (label !== null && label !== "") {
-//       let finalisedData = JSON.parse(
-//         localStorage.getItem("finalisedData") || "[]"
-//       );
-//       const temporaryItem = finalisedData.find(
-//         (item) => item.label === "Temporary"
-//       );
-
-//       // Create finalised pages from selected non-finalised pages
-//       const finalizedPages = nonFinalisedPages.map((pageIndex) => {
-//         const existingPage = temporaryItem
-//           ? temporaryItem.pages.find((p) => p.pageIndex === pageIndex)
-//           : null;
-//         return {
-//           pageIndex: pageIndex,
-//           classes: existingPage ? existingPage.classes : [],
-//         };
-//       });
-
-//       // Create new finalised item
-//       const newItem = {
-//         label: label,
-//         pages: finalizedPages,
-//       };
-
-//       // Remove the pages from the temporary item
-//       if (temporaryItem) {
-//         temporaryItem.pages = temporaryItem.pages.filter(
-//           (p) => !nonFinalisedPages.includes(p.pageIndex)
-//         );
-//       }
-
-//       finalisedData.push(newItem);
-
-//       // Remove the temporary item if it's empty
-//       finalisedData = finalisedData.filter(
-//         (item) => item.label !== "Temporary" || item.pages.length > 0
-//       );
-
-//       localStorage.setItem("finalisedData", JSON.stringify(finalisedData));
-//       console.log("Finalized data:", finalisedData);
-//       alert(`Finalised ${nonFinalisedPages.length} pages`);
-//       clearAllFinalisations();
-//       applyStoredFinalisations();
-//       enableDownIfAllFinalised();
-//       updateClassificationButtonStates();
-//     }
-//   },
-// };
-
 // Add this function at the top of your index.js file
 export function handleSearch(event) {
   if (event.key.toLowerCase() === 'f' && (event.ctrlKey || event.metaKey)) {
     console.log("Search shortcut detected");
-    event.preventDefault(); // Prevent the default browser search
-    // Do nothing else
+    window.instance.setViewState(viewState =>
+      viewState.set(
+        "interactionMode",
+        window.PSPDFKit.InteractionMode.DOCUMENT_EDITOR
+      )
+    );
   }
 }
+
+export function deleteClassification(label) {
+  let finalisedData = JSON.parse(localStorage.getItem("finalisedData") || "[]");
+  
+  // Find the index of the classification to delete
+  const index = finalisedData.findIndex(item => item.label === label);
+  
+  if (index !== -1) {
+    // Remove the classification
+    finalisedData.splice(index, 1);
+    
+    // Update localStorage
+    localStorage.setItem("finalisedData", JSON.stringify(finalisedData));
+    
+    // Clear UI and reapply remaining classifications
+    clearAllFinalisations();
+    applyStoredFinalisations();
+    
+    // Update button states
+    enableDownIfAllFinalised();
+    updateClassificationButtonStates();
+    
+    alert(`Classification "${label}" has been deleted.`);
+  } else {
+    alert(`Classification "${label}" not found.`);
+  }
+}
+
+export const manageClassifications = {
+  type: "custom",
+  id: "ManageClassifications",
+  className: "class",
+  title: "Manage Classifications",
+  disabled: false,
+  onPress: async (event) => {
+    let finalisedData = JSON.parse(localStorage.getItem("finalisedData") || "[]");
+    
+    if (finalisedData.length === 0) {
+      alert("There are no classifications to manage.");
+      return;
+    }
+    
+    let message = "Current classifications:\n\n";
+    finalisedData.forEach((item, index) => {
+      message += `${index + 1}. ${item.label} (${item.pages.length} pages)\n`;
+    });
+    message += "\nEnter the number of the classification you want to delete, or 'cancel' to exit:";
+    
+    const userInput = prompt(message);
+    
+    if (userInput && userInput.toLowerCase() !== 'cancel') {
+      const index = parseInt(userInput) - 1;
+      if (index >= 0 && index < finalisedData.length) {
+        const classificationToDelete = finalisedData[index];
+        if (confirm(`Are you sure you want to delete the classification "${classificationToDelete.label}"?`)) {
+          deleteClassification(classificationToDelete.label);
+        }
+      } else {
+        alert("Invalid selection. Please try again.");
+      }
+    }
+  },
+};

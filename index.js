@@ -8,7 +8,9 @@ import {
   finalise,
   updateClassificationButtonStates,
   handleSearch,
-  clearAllFinalisations
+  clearAllFinalisations,
+  manageClassifications, // Add this import
+  deleteClassification // Add this import
 } from "./helpers.js";
 
 // We need to inform PSPDFKit where to look for its library assets, i.e. the location of the `pspdfkit-lib` directory.
@@ -50,6 +52,7 @@ const docEditToolItems = [
   downloadAllClass,
   Clear,
   finalise,
+  manageClassifications, // Add this new button
 ];
 
 const docEditFootItems = [
@@ -100,6 +103,11 @@ function initializePSPDFKit(pdfArrayBuffer) {
     documentEditorFooterItems: [...docEditFootItems],
     //initialViewState: new PSPDFKit.ViewState().set("interactionMode",PSPDFKit.InteractionMode.DOCUMENT_EDITOR),
     styleSheets: [`/style.css`],
+    documentEditorConfiguration: {
+      thumbnailMinSize: 100,
+      thumbnailMaxSize: 1500,
+      thumbnailDefaultSize: 500,
+    },
   })
     .then(async (instance) => {
       // console.clear();
@@ -117,13 +125,13 @@ function initializePSPDFKit(pdfArrayBuffer) {
       instance.addEventListener(
         "viewState.change",
         (viewState, previousViewState) => {
-          console.log("viewState.change", viewState, previousViewState);
           if (
             viewState.get("interactionMode") ===
             PSPDFKit.InteractionMode.DOCUMENT_EDITOR
           ) {
             applyStoredFinalisations();
             updateClassificationButtonStates();
+            listenForScrollUI();
           }
         }
       );
