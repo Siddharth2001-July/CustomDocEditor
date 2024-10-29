@@ -62,7 +62,7 @@ function initializePSPDFKit(pdfArrayBuffer) {
   document.getElementById('drop-area').style.display = 'none';
   document.getElementById('pspdfkit').style.display = 'block';
 
-  PSPDFKit.load({
+  let pspdfkitConfig = {
     baseUrl,
     container: "#pspdfkit",
     document: pdfArrayBuffer,
@@ -71,7 +71,14 @@ function initializePSPDFKit(pdfArrayBuffer) {
     documentEditorFooterItems: [...docEditFootItems],
     // initialViewState: new PSPDFKit.ViewState().set("interactionMode",PSPDFKit.InteractionMode.DOCUMENT_EDITOR),
     styleSheets: [`/style.css`],
-  })
+  }
+  
+  // let licenseKey = process.env.PSPDFKIT_LICENSE_KEY;
+  // if (licenseKey) {
+  //   pspdfkitConfig = { ...pspdfkitConfig, licenseKey };
+  // }
+
+  PSPDFKit.load(pspdfkitConfig)
     .then(async (instance) => {
       // console.clear();
       window.instance = instance;

@@ -1,3 +1,5 @@
+import { showDownloadZipPopup } from './html-blocks.js';
+
 export const classes = [
   {
     id: "drugAllergies",
@@ -302,6 +304,81 @@ export function clearAllFinalisations() {
   });
 }
 
+// export const downloadAllClass = {
+//   type: "custom",
+//   id: "DownClasses",
+//   className: "class",
+//   title: "Download Zip",
+//   disabled: true,
+//   onPress: async (event) => {
+//     // const finalisedData = JSON.parse(
+//     //   localStorage.getItem("finalisedData") || "[]"
+//     // );
+
+//     if (window.finalisedData.length === 0) {
+//       alert("No finalised pages to download.");
+//       return;
+//     }
+
+//     const zip = new JSZip();
+
+//     // Loop through each classification
+//     await Promise.all(
+//       window.finalisedData.map(async (item) => {
+//         if (item.pages && item.pages.length > 0) {
+//           const classifiedPagesByClass = {};
+
+//           // Organize pages by their classifications
+//           item.pages.forEach((page) => {
+//             page.classes.forEach((classId) => {
+//               if (!classifiedPagesByClass[classId]) {
+//                 classifiedPagesByClass[classId] = [];
+//               }
+//               classifiedPagesByClass[classId].push(page.pageIndex);
+//             });
+//           });
+
+//           // For each classification, create a folder and add the relevant pages
+//           await Promise.all(
+//             Object.entries(classifiedPagesByClass).map(
+//               async ([classId, pageIndexes]) => {
+//                 const classItem = classes.find((c) => c.id === classId);
+//                 const folderName = classItem ? classItem.title : "Unknown";
+
+//                 // Create a folder for each classification
+//                 const folder = zip.folder(folderName);
+
+//                 // Export classified pages as PDFs
+//                 const operations = [
+//                   {
+//                     type: "keepPages",
+//                     pageIndexes: pageIndexes,
+//                   },
+//                 ];
+//                 const pdfBuffer = await window.instance.exportPDFWithOperations(
+//                   operations
+//                 );
+
+//                 // Add the PDF to the corresponding folder with the item.label as filename
+//                 folder.file(`${item.label}.pdf`, pdfBuffer, { binary: true });
+//               }
+//             )
+//           );
+//         }
+//       })
+//     );
+
+//     // Generate the zip file and trigger the download
+//     const zipBlob = await zip.generateAsync({ type: "blob" });
+//     const link = document.createElement("a");
+//     link.href = URL.createObjectURL(zipBlob);
+//     link.download = "classified_documents.zip";
+//     document.body.appendChild(link);
+//     link.click();
+//     document.body.removeChild(link);
+//   },
+// };
+
 export const downloadAllClass = {
   type: "custom",
   id: "DownClasses",
@@ -309,71 +386,101 @@ export const downloadAllClass = {
   title: "Download Zip",
   disabled: true,
   onPress: async (event) => {
-    // const finalisedData = JSON.parse(
-    //   localStorage.getItem("finalisedData") || "[]"
-    // );
-
     if (window.finalisedData.length === 0) {
       alert("No finalised pages to download.");
       return;
     }
 
-    const zip = new JSZip();
+    const folderStructure = {
+      title: "Classified_Documents",
+      subfolders: []
+    };
 
-    // Loop through each classification
-    await Promise.all(
-      window.finalisedData.map(async (item) => {
-        if (item.pages && item.pages.length > 0) {
-          const classifiedPagesByClass = {};
+    // Prepare folder structure information
+    window.finalisedData.forEach((item) => {
+      if (item.pages && item.pages.length > 0) {
+        const classifiedPagesByClass = {};
 
-          // Organize pages by their classifications
-          item.pages.forEach((page) => {
-            page.classes.forEach((classId) => {
-              if (!classifiedPagesByClass[classId]) {
-                classifiedPagesByClass[classId] = [];
-              }
-              classifiedPagesByClass[classId].push(page.pageIndex);
-            });
+        item.pages.forEach((page) => {
+          page.classes.forEach((classId) => {
+            if (!classifiedPagesByClass[classId]) {
+              classifiedPagesByClass[classId] = [];
+            }
+            classifiedPagesByClass[classId].push(page.pageIndex);
           });
+        });
 
-          // For each classification, create a folder and add the relevant pages
-          await Promise.all(
-            Object.entries(classifiedPagesByClass).map(
-              async ([classId, pageIndexes]) => {
-                const classItem = classes.find((c) => c.id === classId);
-                const folderName = classItem ? classItem.title : "Unknown";
+        Object.entries(classifiedPagesByClass).forEach(([classId, pageIndexes]) => {
+          const classItem = classes.find((c) => c.id === classId);
+          const folderName = classItem ? classItem.title : "Unknown";
+          
+          let subfolder = folderStructure.subfolders.find(sf => sf.title === folderName);
+          if (!subfolder) {
+            subfolder = { title: folderName, files: [] };
+            folderStructure.subfolders.push(subfolder);
+          }
+          
+          subfolder.files.push(`${item.label}.pdf`);
+        });
+      }
+    });
 
-                // Create a folder for each classification
-                const folder = zip.folder(folderName);
+    const handleDownload = async () => {
+      const zip = new JSZip();
 
-                // Export classified pages as PDFs
-                const operations = [
-                  {
-                    type: "keepPages",
-                    pageIndexes: pageIndexes,
-                  },
-                ];
-                const pdfBuffer = await window.instance.exportPDFWithOperations(
-                  operations
-                );
+      // Create zip file (same logic as before)
+      await Promise.all(
+        window.finalisedData.map(async (item) => {
+          if (item.pages && item.pages.length > 0) {
+            const classifiedPagesByClass = {};
 
-                // Add the PDF to the corresponding folder with the item.label as filename
-                folder.file(`${item.label}.pdf`, pdfBuffer, { binary: true });
-              }
-            )
-          );
-        }
-      })
-    );
+            item.pages.forEach((page) => {
+              page.classes.forEach((classId) => {
+                if (!classifiedPagesByClass[classId]) {
+                  classifiedPagesByClass[classId] = [];
+                }
+                classifiedPagesByClass[classId].push(page.pageIndex);
+              });
+            });
 
-    // Generate the zip file and trigger the download
-    const zipBlob = await zip.generateAsync({ type: "blob" });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(zipBlob);
-    link.download = "classified_documents.zip";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+            await Promise.all(
+              Object.entries(classifiedPagesByClass).map(
+                async ([classId, pageIndexes]) => {
+                  const classItem = classes.find((c) => c.id === classId);
+                  const folderName = classItem ? classItem.title : "Unknown";
+
+                  const folder = zip.folder(folderName);
+
+                  const operations = [
+                    {
+                      type: "keepPages",
+                      pageIndexes: pageIndexes,
+                    },
+                  ];
+                  const pdfBuffer = await window.instance.exportPDFWithOperations(
+                    operations
+                  );
+
+                  folder.file(`${item.label}.pdf`, pdfBuffer, { binary: true });
+                }
+              )
+            );
+          }
+        })
+      );
+
+      const zipBlob = await zip.generateAsync({ type: "blob" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(zipBlob);
+      link.download = `${folderStructure.title}.zip`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.location.reload();
+    };
+
+    // Show the popup
+    showDownloadZipPopup(folderStructure, handleDownload);
   },
 };
 
